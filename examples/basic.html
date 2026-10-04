@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PromptPay QR JavaScript integration demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --background: #f4f6f8;
+        --surface: #ffffff;
+        --text: #172033;
+        --muted: #607087;
+        --border: #d8dee8;
+        --primary: #175cd3;
+        --primary-soft: #eaf2ff;
+        --success: #087443;
+        --success-soft: #e9f8f0;
+        --danger: #b42318;
+        --danger-soft: #fff0ee;
+        --code: #111827;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--text);
+        font: 15px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main { width: min(960px, calc(100% - 2rem)); margin: 0 auto; padding: 2.5rem 0 4rem; }
+      header { margin-bottom: 1.5rem; }
+      h1, h2, h3 { line-height: 1.25; }
+      h1 { margin: 0 0 .5rem; font-size: clamp(1.75rem, 5vw, 2.5rem); }
+      h2 { margin: 0 0 1rem; font-size: 1.25rem; }
+      h3 { margin: 0 0 .75rem; font-size: 1rem; }
+      p { margin: 0; }
+      .lede { color: var(--muted); max-width: 68ch; }
+      .panel {
+        margin-top: 1rem;
+        padding: 1.25rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: .75rem;
+      }
+      .generator { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 1.5rem; }
+      form { display: grid; gap: 1rem; }
+      label { display: grid; gap: .375rem; font-weight: 650; }
+      label small { color: var(--muted); font-weight: 400; }
+      input {
+        width: 100%;
+        padding: .625rem .75rem;
+        border: 1px solid var(--border);
+        border-radius: .375rem;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+      }
+      input:focus-visible, button:focus-visible { outline: 3px solid rgb(23 92 211 / 25%); outline-offset: 2px; }
+      .badge {
+        display: inline-block;
+        padding: .2rem .55rem;
+        border-radius: 999px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-size: .75rem;
+        font-weight: 750;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+      }
+      .badge[data-mode="static"] { background: var(--success-soft); color: var(--success); }
+      .badge[data-mode="error"] { background: var(--danger-soft); color: var(--danger); }
+      #canvas { display: block; width: 220px; height: 220px; margin-top: .75rem; border: 1px solid var(--border); }
+      #canvas[hidden] { display: none; }
+      #status { min-height: 1.5em; margin-top: .75rem; color: var(--muted); }
+      #status[data-error="true"] { color: var(--danger); }
+      pre {
+        overflow-x: auto;
+        margin: .75rem 0 0;
+        padding: .875rem;
+        border-radius: .375rem;
+        background: var(--code);
+        color: #e5edf8;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .examples { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+      .button-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+      button {
+        min-height: 2.5rem;
+        padding: .5rem .65rem;
+        border: 1px solid var(--border);
+        border-radius: .375rem;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+      }
+      button:hover { border-color: var(--primary); color: var(--primary); }
+      .invalid button:hover { border-color: var(--danger); color: var(--danger); }
+      .snippet + .snippet { margin-top: 1rem; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .note { margin-top: 1rem; color: var(--muted); font-size: .875rem; }
+      @media (max-width: 720px) {
+        main { padding-top: 1.5rem; }
+        .generator, .examples { grid-template-columns: 1fr; }
+        .qr-output { order: -1; }
+      }
+      @media (max-width: 420px) {
+        .button-list { grid-template-columns: 1fr; }
+        .panel { padding: 1rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>PromptPay QR JavaScript demo</h1>
+        <p class="lede">
+          Generate browser-safe PromptPay payloads with <code>promptpay-generator-js</code>, then render them to Canvas with
+          <code>qrcode</code>. No QR renderer is included in the core library.
+        </p>
+      </header>
+
+      <section class="panel" aria-labelledby="generator-heading">
+        <h2 id="generator-heading">Live generator</h2>
+        <div class="generator">
+          <div>
+            <form id="form">
+              <label for="target">
+                PromptPay target
+                <small>10-digit Thai phone, 13-digit tax/national ID, or 15-digit e-wallet ID</small>
+              </label>
+              <input id="target" value="089-999-9999" autocomplete="off" spellcheck="false" />
+
+              <label for="amount">
+                Amount in THB (optional)
+                <small>Leave empty for a static QR; enter a positive decimal for a dynamic QR</small>
+              </label>
+              <input id="amount" placeholder="420" inputmode="decimal" autocomplete="off" spellcheck="false" />
+            </form>
+
+            <p id="status" role="status" aria-live="polite"></p>
+            <h3>Generated EMV payload</h3>
+            <pre id="payload">Generating…</pre>
+          </div>
+
+          <div class="qr-output">
+            <strong id="mode" class="badge" data-mode="static">Static QR</strong>
+            <canvas id="canvas" width="220" height="220" aria-label="Generated PromptPay QR code" hidden></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="examples" aria-label="PromptPay use case presets">
+        <div class="panel">
+          <h2>Valid use cases</h2>
+          <div class="button-list">
+            <button type="button" data-demo-kind="valid" data-demo-index="0">Phone · static</button>
+            <button type="button" data-demo-kind="valid" data-demo-index="1">Phone · dynamic</button>
+            <button type="button" data-demo-kind="valid" data-demo-index="2">Tax ID · static</button>
+            <button type="button" data-demo-kind="valid" data-demo-index="3">Tax ID · dynamic</button>
+            <button type="button" data-demo-kind="valid" data-demo-index="4">E-wallet · static</button>
+            <button type="button" data-demo-kind="valid" data-demo-index="5">E-wallet · dynamic</button>
+          </div>
+          <p class="note">Static QR codes omit field <code>54</code>. Dynamic QR codes include a fixed, two-decimal amount.</p>
+        </div>
+
+        <div class="panel invalid">
+          <h2>Validation use cases</h2>
+          <div class="button-list">
+            <button type="button" data-demo-kind="invalid" data-demo-index="0">Empty target</button>
+            <button type="button" data-demo-kind="invalid" data-demo-index="1">Malformed target</button>
+            <button type="button" data-demo-kind="invalid" data-demo-index="2">Zero amount</button>
+            <button type="button" data-demo-kind="invalid" data-demo-index="3">Negative amount</button>
+            <button type="button" data-demo-kind="invalid" data-demo-index="4">Invalid decimal</button>
+          </div>
+          <p class="note">Invalid input produces a clear error and hides the previous QR so stale payment data cannot be scanned.</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="integration-heading">
+        <h2 id="integration-heading">Integration examples</h2>
+        <p class="note">
+          Build this checkout with <code>npm run build</code> before using the local bundle examples below.
+        </p>
+
+        <div class="snippet">
+          <h3>ES modules (local build)</h3>
+          <pre><code>import QRCode from 'qrcode';
+import { generatePayload } from './dist/index.js';
+
+// Static: payer enters the amount in their banking app.
+const staticPayload = generatePayload('089-999-9999');
+
+// Dynamic: amount is fixed. Numbers and decimal strings are supported.
+const dynamicPayload = generatePayload('1234567890123', 420);
+const exactDecimal = generatePayload('004999000288505', '100.25');
+
+await QRCode.toCanvas(document.querySelector('#qr'), dynamicPayload);</code></pre>
+        </div>
+
+        <div class="snippet">
+          <h3>Direct browser (local build + QR renderer CDN)</h3>
+          <pre><code>&lt;canvas id="qr"&gt;&lt;/canvas&gt;
+&lt;script type="module"&gt;
+  import QRCode from 'https://cdn.jsdelivr.net/npm/qrcode/+esm';
+  import { generatePayload } from './dist/index.js';
+
+  const payload = generatePayload('089-999-9999', '420');
+  await QRCode.toCanvas(document.querySelector('#qr'), payload);
+&lt;/script&gt;</code></pre>
+        </div>
+
+        <div class="snippet">
+          <h3>CommonJS (local build)</h3>
+          <pre><code>const { generatePayload, formatAmount, formatTarget, crc16 } = require('./dist/index.cjs');
+
+console.log(generatePayload('089-999-9999'));
+console.log(formatAmount('1337.1387')); // 1337.14
+console.log(formatTarget('089-999-9999')); // 0066899999999</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { mountPromptPayExample } from './basic.js';
+
+      const example = mountPromptPayExample();
+      void example.render();
+    </script>
+  </body>
+</html>

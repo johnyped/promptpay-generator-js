@@ -1,0 +1,51 @@
+{
+  "name": "promptpay-generator-js",
+  "version": "1.0.0",
+  "description": "Dependency-free JavaScript library that generates PromptPay EMV QR Code payload strings for browsers and Node.js.",
+  "keywords": [
+    "promptpay",
+    "qr",
+    "qrcode",
+    "emv",
+    "qrcps",
+    "thailand",
+    "browser"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "browser": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsup src/index.js --format esm,cjs --target es2020 --platform neutral --clean --out-dir dist",
+    "check": "npm test && npm run build && npm run verify",
+    "dev:example": "vite --config examples/vite.config.js",
+    "verify": "node scripts/verify-package.mjs"
+  },
+  "devDependencies": {
+    "qrcode": "^1.5.4",
+    "tsup": "^8.3.5",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8"
+  }
+}
